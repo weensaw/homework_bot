@@ -1,3 +1,4 @@
+import json
 import logging
 import logging.config
 import os
@@ -36,8 +37,8 @@ def check_tokens():
         TELEGRAM_TOKEN,
         TELEGRAM_CHAT_ID
     )
-    if not all(tokens):
-        logging.critical('Нет переменной окружения')
+    if not tokens:
+        logger.critical('Нет переменной окружения')
     return all(tokens)
 
 
@@ -46,8 +47,9 @@ def send_message(bot, message):
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
         logging.debug(f'Сообщение {message} отправлено')
-    except Exception as error:
+    except telegram.TelegramError as error:
         logging.error(f'Ошибка отправки {error}')
+        raise error(f'Ошибка отправки {error}')
 
 
 def get_api_answer(timestamp) -> dict:
@@ -57,6 +59,7 @@ def get_api_answer(timestamp) -> dict:
         response = requests.get(ENDPOINT, headers=HEADERS, params=payload)
     except Exception as error:
         logging.debug(f'Ошибка {error}', exc_info=True)
+        raise ConnectionError(f'Ошибка {error}')
     if response.status_code != HTTPStatus.OK:
         raise Exception.ResponseStatusError(
             f'нет доступа к API. {response.status_code}',
@@ -64,8 +67,9 @@ def get_api_answer(timestamp) -> dict:
         )
     try:
         response.json()
-    except Exception as error:
+    except json.decoder.JSONDecodeError as error:
         logging.error(f'ответ не в json, {error}')
+        raise TypeError('ответ не в json')
     return response.json()
 
 
@@ -77,6 +81,8 @@ def check_response(response):
         raise ValueError('Нет инфы о дз')
     if not isinstance(response.get('homeworks'), list):
         raise TypeError('Дз должен быть списком!')
+    if response['homeworks']:
+        return response.get('homeworks')
     return response['homeworks']
 
 
@@ -84,16 +90,14 @@ def parse_status(homework):
     """извлекает из информации о конкретной домашней работе."""
     try:
         status = homework['status']
-    except Exception:
-        logging.error('Ошибка')
-        raise KeyError('Ошибка')
+    except KeyError as error:
+        logging.error(f'Ошибка {error}')
+        raise KeyError(f'Ошибка {error}')
     try:
         homework_name = homework['homework_name']
-    except Exception:
-        logging.error('нет ключа')
-        raise KeyError('нет ключа')
-    if homework['status'] in homework:
-        status = homework['status']
+    except KeyError as error:
+        logging.error(f'нет ключа {error}')
+        raise KeyError(f'нет ключа {error}')
     if status in HOMEWORK_VERDICTS:
         verdict = HOMEWORK_VERDICTS[status]
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
@@ -120,6 +124,7 @@ def main():
             if error != status:
                 message = f'Сбой в работе программы: {error}'
                 logger.error(message, exc_info=True)
+                raise error(message)
         finally:
             time.sleep(RETRY_PERIOD)
 
