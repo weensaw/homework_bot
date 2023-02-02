@@ -48,7 +48,7 @@ def send_message(bot, message):
         bot.send_message(TELEGRAM_CHAT_ID, message)
         logger.debug(f'Сообщение {message} отправлено')
     except telegram.TelegramError as error:
-        logging.error(f'Ошибка отправки {error}')
+        logger.error(f'Ошибка отправки {error}')
         raise error(f'Ошибка отправки {error}')
 
 
@@ -58,7 +58,7 @@ def get_api_answer(timestamp) -> dict:
     try:
         response = requests.get(ENDPOINT, headers=HEADERS, params=payload)
     except requests.exceptions.RequestException as error:
-        logging.debug(f'Ошибка {error}', exc_info=True)
+        logger.debug(f'Ошибка {error}', exc_info=True)
         raise error(f'Ошибка {error}')
     if response.status_code != HTTPStatus.OK:
         raise Exception.ResponseStatusError(
@@ -68,7 +68,7 @@ def get_api_answer(timestamp) -> dict:
     try:
         response.json()
     except json.decoder.JSONDecodeError as error:
-        logging.error(f'ответ не в json, {error}')
+        logger.error(f'ответ не в json, {error}')
         raise TypeError('ответ не в json')
     return response.json()
 
@@ -91,12 +91,12 @@ def parse_status(homework):
     try:
         status = homework['status']
     except KeyError as error:
-        logging.error(f'Ошибка {error}')
+        logger.error(f'Ошибка {error}')
         raise KeyError(f'Ошибка {error}')
     try:
         homework_name = homework['homework_name']
     except KeyError as error:
-        logging.error(f'нет ключа {error}')
+        logger.error(f'нет ключа {error}')
         raise KeyError(f'нет ключа {error}')
     if status in HOMEWORK_VERDICTS:
         verdict = HOMEWORK_VERDICTS[status]
@@ -106,7 +106,7 @@ def parse_status(homework):
 def main():
     """Основная логика работы бота."""
     if not check_tokens():
-        logging.critical('Токены отсутствуют!')
+        logger.critical('Токены отсутствуют!')
         sys.exit('Токены отсутствуют!')
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time()) - RETRY_PERIOD
