@@ -46,7 +46,7 @@ def send_message(bot, message):
     """отправляет сообщение в Telegram чат."""
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
-        logging.debug(f'Сообщение {message} отправлено')
+        logger.debug(f'Сообщение {message} отправлено')
     except telegram.TelegramError as error:
         logging.error(f'Ошибка отправки {error}')
         raise error(f'Ошибка отправки {error}')
@@ -57,9 +57,9 @@ def get_api_answer(timestamp) -> dict:
     payload = {'from_date': timestamp}
     try:
         response = requests.get(ENDPOINT, headers=HEADERS, params=payload)
-    except Exception as error:
+    except requests.exceptions.RequestException as error:
         logging.debug(f'Ошибка {error}', exc_info=True)
-        raise ConnectionError(f'Ошибка {error}')
+        raise error(f'Ошибка {error}')
     if response.status_code != HTTPStatus.OK:
         raise Exception.ResponseStatusError(
             f'нет доступа к API. {response.status_code}',
@@ -81,8 +81,8 @@ def check_response(response):
         raise ValueError('Нет инфы о дз')
     if not isinstance(response.get('homeworks'), list):
         raise TypeError('Дз должен быть списком!')
-    if response['homeworks']:
-        return response.get('homeworks')
+    if 'current_date' not in response:
+        raise ValueError('Отсутствует информация')
     return response['homeworks']
 
 
